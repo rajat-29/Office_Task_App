@@ -4,12 +4,16 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -38,6 +42,15 @@ public class HomeActivity extends AppCompatActivity {
 
     // RECYCLER
     private RecyclerView recyclerView;
+
+    private EditText titleUpdate;
+    private EditText noteUpdate;
+    private Button updateData;
+    private Button deleteData;
+
+    private String title;
+    private String note;
+    private String post_key;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,11 +161,21 @@ public class HomeActivity extends AppCompatActivity {
                 )
         {
             @Override
-            protected void populateViewHolder(MyViewHolder myViewHolder, Data model, int i) {
+            protected void populateViewHolder(MyViewHolder myViewHolder, final Data model, final int i) {
 
                 myViewHolder.setTitle(model.getTitle());
                 myViewHolder.setNote(model.getNote());
                 myViewHolder.setDate(model.getDate());
+
+                myViewHolder.myView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        post_key = getRef(i).getKey();
+                        title = model.getTitle();
+                        note = model.getNote();
+                        updateData();
+                    }
+                });
 
             }
         };
@@ -186,4 +209,95 @@ public class HomeActivity extends AppCompatActivity {
             mDate.setText(date);
         }
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        getMenuInflater().inflate(R.menu.mainmenu,menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+
+        switch (item.getItemId())
+        {
+            case R.id.logout:
+                mAuth.signOut();
+                startActivity(new Intent(getApplicationContext(),MainActivity.class));
+                Toast.makeText(getApplicationContext(),"Logged Out Successfully",Toast.LENGTH_SHORT).show();
+                break;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    public void updateData()
+    {
+        AlertDialog.Builder mydailog = new AlertDialog.Builder(HomeActivity.this);
+        LayoutInflater inflater = LayoutInflater.from(HomeActivity.this);
+
+        View myview = inflater.inflate(R.layout.updateinputfield,null);
+        mydailog.setView(myview);
+
+        final AlertDialog dialog = mydailog.create();
+
+        titleUpdate = myview.findViewById(R.id.edt_title_upd);
+        noteUpdate = myview.findViewById(R.id.edt_note_upd);
+        updateData = myview.findViewById(R.id.update_note);
+        deleteData = myview.findViewById(R.id.delete_note);
+
+        titleUpdate.setText(title);
+        titleUpdate.setSelection(title.length());
+
+        noteUpdate.setText(note);
+        noteUpdate.setSelection(note.length());
+
+
+        updateData.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                title = titleUpdate.getText().toString().trim();
+                note = noteUpdate.getText().toString().trim();
+
+                String mDate = DateFormat.getDateInstance().format(new Date());
+
+                Data data = new Data(title,note,mDate,post_key);
+
+                mDatabase.child(post_key).setValue(data);
+
+                Toast.makeText(getApplicationContext(),"Data Updated Successfully",Toast.LENGTH_SHORT).show();
+
+                dialog.dismiss();
+
+            }
+        });
+
+        deleteData.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                mDatabase.child(post_key).removeValue();
+
+                Toast.makeText(getApplicationContext(),"Data Deleted Successfully",Toast.LENGTH_SHORT).show();
+
+                dialog.dismiss();
+
+            }
+        });
+
+
+        dialog.show();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if(mAuth.getCurrentUser() != null) {
+            ActivityCompat.finishAffinity(HomeActivity.this);
+        } else {
+            super.onBackPressed();
+        }
+    }
 }
+
